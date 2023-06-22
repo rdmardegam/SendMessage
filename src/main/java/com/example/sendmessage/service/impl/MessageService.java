@@ -5,57 +5,110 @@ import java.util.List;
 import java.util.Map;
 
 import com.example.sendmessage.enums.TypeTemplateEnum;
-import com.example.sendmessage.exception.BusinessException;
-import com.example.sendmessage.exception.MessageSendingException;
-import com.example.sendmessage.exception.TechnicalException;
-import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
+import com.example.sendmessage.exception.MultiErrorException;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
-import io.github.resilience4j.core.registry.EntryAddedEvent;
-import io.github.resilience4j.core.registry.EntryRemovedEvent;
-import io.github.resilience4j.core.registry.EntryReplacedEvent;
-import io.github.resilience4j.core.registry.RegistryEventConsumer;
-import io.github.resilience4j.retry.RetryRegistry;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Bean;
 import org.springframework.stereotype.Service;
 
 import com.example.sendmessage.model.Message;
 import com.example.sendmessage.template.IMessageTemplate;
 import com.example.sendmessage.template.MessageTemplateFactory;
 
-import javax.annotation.PostConstruct;
-
 @Service
 public class MessageService {
+
+//	@CircuitBreaker(name = "sendsms")
+//	public void sendMessage(Message message, Integer ... id) throws Exception {
+//		// syncronized hashmap to store exceptions
+//		Map<TypeTemplateEnum, Exception> mapTemplateException = new HashMap<>();
+//
+////		if(1==1) {
+////			throw new Exception("TESTE", new BusinessException("TechnicalException"));
+////		}
+//
+//		// Seleciona os templates possiveis
+//		List<IMessageTemplate> listMessagemTemplate = MessageTemplateFactory.getServiceMessageTemplateByMessage(message);
+//
+//
+//			// try call in parallel all templates selected for message
+//			for(IMessageTemplate template : listMessagemTemplate) {
+//				template.valid(message);
+//				template.send(message);
+////				try {
+////					template.valid(message);
+////					template.send(message);
+////				} catch (BusinessException e) {
+////					mapTemplateException.put(template.getTypeTemplate(), e);
+////				} catch (TechnicalException e) {
+////					mapTemplateException.put(template.getTypeTemplate(), e);
+////				} catch (Exception e) {
+////					mapTemplateException.put(template.getTypeTemplate(), e);
+////				}
+//			}
+//
+//		// if all templates fail, throw exception
+////		if(mapTemplateException.size() == listMessagemTemplate.size()) {
+////			throw new MessageSendingException(mapTemplateException);
+////		}
+//
+//
+//	}
+//}
 
 	@CircuitBreaker(name = "sendsms")
 	public void sendMessage(Message message, Integer ... id) throws Exception {
 		// syncronized hashmap to store exceptions
-		Map<TypeTemplateEnum, Exception> mapTemplateException = new HashMap<>();
+		Map<TypeTemplateEnum, Exception> multiErrorExceptionMap = new HashMap<>();
 
-		/*if(1==1) {
-			throw new TechnicalException("Erro tecnico");
-		}*/
+
+//		if(1==1) {
+//			throw new Exception("TESTE", new BusinessException("TechnicalException"));
+//		}
 
 		// Seleciona os templates possiveis
 		List<IMessageTemplate> listMessagemTemplate = MessageTemplateFactory.getServiceMessageTemplateByMessage(message);
 
-		try {
-			// try call in parallel all templates selected for message
-			for(IMessageTemplate template : listMessagemTemplate) {
-				template.valid(message);
-				template.send(message);
-			}
 
-		} catch (Exception e) {
-			//Thows exeption cause content in e.getcause()
-			Exception ex = (Exception) e.getCause();
-			throw ex;
+		// show all templates selected
+		for(IMessageTemplate template : listMessagemTemplate) {
+			System.out.println("Template Selected: " + template.getTypeTemplate());
 		}
+
+
+		// try call in parallel all templates selected for message
+		for(IMessageTemplate template : listMessagemTemplate) {
+			//template.valid(message);
+			//template.send(message);
+				try {
+					template.valid(message);
+					template.send(message);
+				} catch (Exception e) {
+					multiErrorExceptionMap.put(template.getTypeTemplate(), e);
+				}
+		}
+
+		// check if exists any exception
+		this.handlePossibleException(multiErrorExceptionMap);
+
+
+
+		// if all templates fail, throw exception
+//		if(mapTemplateException.size() == listMessagemTemplate.size()) {
+//			throw new MessageSendingException(mapTemplateException);
+//		}
+
 
 	}
 
+	private void handlePossibleException(Map<TypeTemplateEnum, Exception> mapTemplateException) throws Exception {
+		if(mapTemplateException.size() > 0) {
+			throw new MultiErrorException("Erro ao executar o envio da(s) mensssagen(s)",mapTemplateException);
+		}
+	}
 }
+
+
+
+
 
 
 
