@@ -1,6 +1,6 @@
 package com.example.sendmessage.config;
 
-import com.example.sendmessage.exception.BusinessException;
+import com.example.sendmessage.exception.MultiErrorException;
 import com.example.sendmessage.exception.TechnicalException;
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import io.github.resilience4j.circuitbreaker.CircuitBreakerConfig;
@@ -52,6 +52,13 @@ public class CircuitBreakConfig {
 
         if (targetExceptionClass.isInstance(throwable)) {
             return true;
+        }
+
+        // check if throwable has MessageSendingException
+        if (MultiErrorException.class.isInstance(throwable)) {
+            if(throwable.getSuppressed().length > 0 && Arrays.stream(throwable.getSuppressed()).anyMatch(suppressed -> hasThrowableInHierarchy(suppressed, targetExceptionClass))) {
+                return true;
+            }
         }
 
         return hasThrowableInHierarchy(throwable.getCause(), targetExceptionClass);

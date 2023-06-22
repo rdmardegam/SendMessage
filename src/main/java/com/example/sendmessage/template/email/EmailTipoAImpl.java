@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.example.sendmessage.enums.TypeTemplateEnum;
+import com.example.sendmessage.exception.TechnicalException;
 import org.springframework.stereotype.Service;
 
 import com.example.sendmessage.enums.TypeMessageEnum;
@@ -37,9 +38,13 @@ public class EmailTipoAImpl extends EmailTemplateBase implements IMessageTemplat
 	}
 	
 	@Override
-	public void send(Message message) {
+	public void send(Message message) throws TechnicalException {
 		Email email = this.buildEmail(message);
-		
+
+		if(1==1) {
+			throw new TechnicalException("Erro ao enviar email de recuperacao... teste");
+		}
+
 		// Enviando
 		System.out.println(email);
 	}
